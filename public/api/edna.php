@@ -3,12 +3,12 @@
  * edna.php — Anthropic API proxy for SCP Central
  * Place at: /home/ssaiadmin/scp-stack/php/api/edna.php
  *
- * SECURITY: API key lives at /var/www/secrets.php
+ * SECURITY: API key lives at /var/config/secrets.php
  * That file is outside the web root and never touches Git.
  */
 
 // ── SECRETS ─────────────────────────────────────────────────────────────────
-require_once '/var/www/secrets.php';
+require_once __DIR__ . '/../../config/secrets.php';
 
 define('ANTHROPIC_API_URL', 'https://api.anthropic.com/v1/messages');
 define('ANTHROPIC_VERSION', '2023-06-01');
