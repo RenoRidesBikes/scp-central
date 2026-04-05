@@ -138,8 +138,7 @@ foreach ($prompt_rows as $row) {
 $system_parts[] = '
 Return ONLY valid JSON, no markdown, no explanation.
 
-// TODO: hardcoded — replace with Avanti customer lookup once IPsec tunnel is up
-Known customers — ONLY return a customer value if the job description clearly matches one of these names. If uncertain or not listed, return null for customer:
+Known customers — ONLY return a customer value if the job description clearly matches one of these names exactly. If the customer is not in this list or is unclear, return null:
 - BCAA
 - Telus
 - BC Hydro
