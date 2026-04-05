@@ -1,6 +1,6 @@
 <?php
 /**
- * /public/api/edna.php
+ * /api/edna.php
  *
  * Edna AI orchestrator.
  * - Loads system prompt layers from edna_prompts table
@@ -137,7 +137,7 @@ Return this exact structure:
 {
   "customer": "string or null",
   "job_name": "string",
-  "job_type": "continuous | snap_set | forms_sheetfed",
+  "job_type": "continuous | snap_set | sheetfed",
   "job_type_confidence": "confirmed | suggested",
   "width": "string or null",
   "width_confidence": "confirmed | suggested | missing",
