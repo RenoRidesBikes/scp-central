@@ -182,7 +182,7 @@ Return this exact structure:
   "perforation_confidence": "confirmed | suggested | missing",
   "finishing": "string or null",
   "finishing_confidence": "confirmed | suggested | missing",
-  "press": "number as string e.g. '3', or null",
+  "press": "number as string e.g. 3, or null",
   "press_reason": "string — one sentence why this press, or null",
   "quantities": [1000, 2500, 5000],
   "edna_note": "string — one sentence, plain language, flag anything unusual or missing"
