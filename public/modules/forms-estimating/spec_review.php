@@ -673,43 +673,11 @@ async function parseWithAI(customer, description) {
   }
 }
 
-/* ── DEMO SPEC (fallback / direct navigation) ── */
+/* ── BLANK SPEC (fallback / direct navigation) ── */
 function loadDemoSpec() {
-  populateForm({
-    customer: "BCAA", job_name: "NCR snap sets 3-part, 8.5×11, black ink, top perf, padded 50s",
-    job_type: "snap_set", job_type_confidence: "confirmed",
-    width: "8.5", width_confidence: "confirmed", depth: "11", depth_confidence: "confirmed",
-    parts: "3", parts_confidence: "confirmed",
-    ncr_type: "CB / CFB / CF (3-part)", ncr_type_confidence: "confirmed",
-    stock: "15lb NCR carbonless", stock_confidence: "suggested",
-    ink_front: "1 colour — black", ink_front_confidence: "confirmed", ink_back: "0 (blank)",
-    press: "3", press_reason: "Press 3 (Didde 22\" · 5 colour) — best fit for this snap set job.",
-    finishing: [
-      {name:"perforation", include:true,  confidence:"confirmed", detail:"Top — from spec"},
-      {name:"padding",     include:true,  confidence:"confirmed", detail:"Sets of 50 — from spec"},
-      {name:"collating",   include:true,  confidence:"suggested", detail:"Required for multi-part NCR"},
-      {name:"numbering",   include:false, confidence:"confirmed", detail:"Sequential per set"},
-      {name:"drilling",    include:false, confidence:"confirmed", detail:"3-hole or custom"},
-      {name:"shrink_wrap", include:false, confidence:"confirmed", detail:"Individual wrapping"}
-    ],
-    qty_breaks: ["5000","10000","25000"],
-    confidence_counts: {confirmed:9, suggested:3, missing:0},
-    confidence_rows: [
-      {label:"Customer",   value:"BCAA",       state:"confirmed"},
-      {label:"Job type",   value:"Snap Set",   state:"confirmed"},
-      {label:"Size",       value:"8.5 × 11\"", state:"confirmed"},
-      {label:"Parts",      value:"3",          state:"confirmed"},
-      {label:"NCR type",   value:"CB/CFB/CF",  state:"confirmed"},
-      {label:"Stock",      value:"15lb NCR",   state:"suggested"},
-      {label:"Ink",        value:"1/0 black",  state:"confirmed"},
-      {label:"Perf",       value:"Top",        state:"confirmed"},
-      {label:"Padding",    value:"50s",        state:"confirmed"},
-      {label:"Press",      value:"Press 3 ✦",  state:"suggested"},
-      {label:"Collating",  value:"Auto-added", state:"suggested"},
-      {label:"Qty breaks", value:"5K/10K/25K", state:"confirmed"}
-    ],
-    edna_notes: "Everything looks solid. I added collating — it's always required on multi-part NCR. Confirm the stock weight if you have a customer spec sheet."
-  });
+  // No demo data — show blank form and let CSR describe the job
+  document.getElementById('edna-notes').textContent =
+    'Describe the job on the previous screen and I\'ll parse it — or fill in the fields manually.';
 }
 
 function reparseWithEdna() {
