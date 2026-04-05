@@ -12,7 +12,7 @@ $userRole = strtolower($_AUTH_USER['role'] ?? 'csr');
 
 // ── Page config ───────────────────────────────────────────────────────────────
 $pageTitle  = 'Spec Review';
-$activePage = 'estimating';
+$activePage = 'forms-estimating';
 $navBadges  = [];
 
 // ── Page-specific CSS ─────────────────────────────────────────────────────────

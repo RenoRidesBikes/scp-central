@@ -18,8 +18,8 @@ $quoteActionCount = 6;
 
 // ── Page config ───────────────────────────────────────────────────────────────
 $pageTitle  = 'Estimating';
-$activePage = 'estimating';
-$navBadges  = ['estimating' => $quoteActionCount];
+$activePage = 'forms-estimating';
+$navBadges  = ['forms-estimating' => $quoteActionCount];
 
 // ── Page-specific CSS ─────────────────────────────────────────────────────────
 $extraCss = '<style>

@@ -98,6 +98,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 }
 .nav-item:hover{color:var(--text);background:var(--bg-surface)}
 .nav-item.active{color:var(--red);background:#FEF0EF;border-left-color:var(--red)}
+.nav-item-soon{opacity:0.5;cursor:default!important;pointer-events:none}
+.nav-badge-soon{background:#aaa!important}
 .nav-item-icon{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .nav-item-icon svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .nav-item-label{white-space:nowrap;overflow:hidden;flex:1}
@@ -407,13 +409,27 @@ textarea.fi{line-height:1.5}
     <span class="nav-tooltip">Dashboard</span>
   </a>
 
-  <a class="nav-item<?= $_activePage === 'estimating' ? ' active' : '' ?>" href="/modules/forms-estimating/">
+  <a class="nav-item<?= $_activePage === 'forms-estimating'    ? ' active' : '' ?>" href="/modules/forms-estimating/">
     <span class="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7H6a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-3"/><path d="M9 15h3l8.5-8.5a1.5 1.5 0 00-3-3L9 12v3z"/></svg></span>
-    <span class="nav-item-label">Estimating</span>
-    <?php if (!empty($_navBadges['estimating'])): ?>
-    <span class="nav-badge"><?= (int)$_navBadges['estimating'] ?></span>
+    <span class="nav-item-label">Forms Estimating</span>
+    <?php if (!empty($_navBadges['forms-estimating'])): ?>
+    <span class="nav-badge"><?= (int)$_navBadges['forms-estimating'] ?></span>
     <?php endif; ?>
-    <span class="nav-tooltip">Estimating</span>
+    <span class="nav-tooltip">Forms Estimating</span>
+  </a>
+
+  <a class="nav-item nav-item-soon" href="#">
+    <span class="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></span>
+    <span class="nav-item-label">Sheetfed Estimating</span>
+    <span class="nav-badge nav-badge-soon">Soon</span>
+    <span class="nav-tooltip">Sheetfed Estimating — coming soon</span>
+  </a>
+
+  <a class="nav-item nav-item-soon" href="#">
+    <span class="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+    <span class="nav-item-label">Wide Format</span>
+    <span class="nav-badge nav-badge-soon">Soon</span>
+    <span class="nav-tooltip">Wide Format Estimating — coming soon</span>
   </a>
 
   <a class="nav-item<?= $_activePage === 'customers'  ? ' active' : '' ?>" href="#">
