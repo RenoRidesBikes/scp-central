@@ -544,14 +544,32 @@ function populateForm(spec) {
     r.textContent = spec.press_reason || '';
   }
 
-  // finishing — Edna returns a plain string; scan it for known operations and tick the checkboxes
+  // perforation — Edna returns this as its own field too
+  if (spec.perforation) {
+    const el = document.getElementById('fin-perf');
+    if (el) {
+      el.querySelector('input').checked = true;
+      el.classList.add('fin-checked', 'fin-suggested');
+      const detail = el.querySelector('.fin-detail');
+      if (detail) detail.textContent = spec.perforation;
+      const badge = document.createElement('span');
+      badge.className = 'fin-badge fin-badge-' + (spec.perforation_confidence === 'confirmed' ? 'confirmed' : 'suggested');
+      badge.textContent = spec.perforation_confidence === 'confirmed' ? 'Confirmed' : 'Edna added';
+      el.appendChild(badge);
+    }
+  }
+
+  // finishing string — scan for remaining operations
   if (spec.finishing && typeof spec.finishing === 'string') {
     const lower = spec.finishing.toLowerCase();
-    const finMap = { perforation:'fin-perf', padding:'fin-pad', collating:'fin-collate', numbering:'fin-number', drilling:'fin-drill', 'shrink wrap':'fin-shrink' };
+    // perforation already handled above — skip it here
+    const finMap = { padding:'fin-pad', collating:'fin-collate', numbering:'fin-number', drilling:'fin-drill', 'shrink wrap':'fin-shrink' };
     Object.entries(finMap).forEach(([keyword, id]) => {
       if (lower.includes(keyword)) {
         const el = document.getElementById(id);
         if (!el) return;
+        // don't double-badge if already checked
+        if (el.querySelector('input').checked) return;
         el.querySelector('input').checked = true;
         el.classList.add('fin-checked', 'fin-suggested');
         const badge = document.createElement('span');
@@ -560,9 +578,9 @@ function populateForm(spec) {
         el.appendChild(badge);
       }
     });
-    // show full finishing string in perf detail as a note
+    // show full finishing string as the perf detail note
     const perfDetail = document.getElementById('fin-perf-detail');
-    if (perfDetail) perfDetail.textContent = spec.finishing;
+    if (perfDetail && !spec.perforation) perfDetail.textContent = spec.finishing;
   }
 
   // qty breaks — Edna returns as "quantities"; fall back to qty_breaks for future compatibility
