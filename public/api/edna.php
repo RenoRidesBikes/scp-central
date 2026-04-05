@@ -158,6 +158,29 @@ Press 4: MVP, 14" cutoff — short run specialist
 Press 5: Didde, 17" web — backup to Press 2, narrow web 1-2 colour
 Press 11: Didde, 22" web, 8 colour — full colour jobs only
 
+NCR type reference — use these exact strings for ncr_type:
+- CB / CF (2-part)
+- CB / CFB / CF (3-part)
+- CB / CFB / CFB / CF (4-part)
+- N/A — for non-NCR jobs (continuous forms, sheetfed, single-part)
+Always set ncr_type to N/A for continuous forms jobs.
+Infer NCR type from part count if not explicitly stated: 2-part = CB/CF, 3-part = CB/CFB/CF, 4-part = CB/CFB/CFB/CF.
+
+Finishing operations reference — these are the only valid finishing operations:
+- perforation: cuts in paper for tearing. Common on snap sets and continuous forms. Always specify location e.g. top, bottom, left, right, centre.
+- padding: sets glued at the head. Common on snap sets. Specify set size e.g. 25, 50, 100. Treat "padded", "pads of", "glued in sets", "books of" as padding.
+- collating: interleaving NCR plies in correct order. ALWAYS include for any multi-part NCR job — it is automatic and non-negotiable.
+- numbering: sequential number printed on each set. Include only if mentioned or clearly implied.
+- drilling: hole punching. Include only if mentioned.
+- shrink wrap: individual pad wrapping. Include only if mentioned.
+
+For the finishing field return a plain English string listing all applicable operations with relevant detail e.g. "perforation top, padding sets of 50, collating (3-part NCR)".
+
+Quantity break defaults — use these if not specified in the description:
+- snap set: 5000, 10000, 25000
+- continuous: 10000, 25000, 50000
+- sheetfed: 500, 1000, 2500
+
 Return this exact structure:
 {
   "customer": "string or null",
