@@ -137,6 +137,15 @@ foreach ($prompt_rows as $row) {
 // TODO: hardcoded JSON structure — move field definitions to DB per job type
 $system_parts[] = '
 Return ONLY valid JSON, no markdown, no explanation.
+
+Press reference — Still Creek Press equipment:
+Press 1: MVP Memjet, 11" cutoff — rarely used for forms work
+Press 2: Didde, 17" web — 1-2 colour narrow web
+Press 3: Didde, 22" web, 5 colour — primary forms press, best for most snap set and continuous work
+Press 4: MVP, 14" cutoff — short run specialist
+Press 5: Didde, 17" web — backup to Press 2, narrow web 1-2 colour
+Press 11: Didde, 22" web, 8 colour — full colour jobs only
+
 Return this exact structure:
 {
   "customer": "string or null",
@@ -161,6 +170,8 @@ Return this exact structure:
   "perforation_confidence": "confirmed | suggested | missing",
   "finishing": "string or null",
   "finishing_confidence": "confirmed | suggested | missing",
+  "press": "number as string e.g. '3', or null",
+  "press_reason": "string — one sentence why this press, or null",
   "quantities": [1000, 2500, 5000],
   "edna_note": "string — one sentence, plain language, flag anything unusual or missing"
 }';
