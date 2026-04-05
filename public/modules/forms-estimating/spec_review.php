@@ -1,7 +1,7 @@
 <?php
 /**
  * spec_review.php — SCP Central Spec Review
- * Place at: /home/ssaiadmin/scp-stack/php/modules/forms-estimating/spec_review.php
+ * Place at: /modules/forms-estimating/spec_review.php
  */
 
 // ── AUTH STUB ────────────────────────────────────────────────────────────────
@@ -623,7 +623,17 @@ function selectPress(num, el) {
   r.style.display = 'block';
   r.textContent = pressReasons[num] || '';
 }
+let currentJobType = null;
+
+// Maps picker value → DB module key for edna_prompts job_type layer
+const jobTypeMap = {
+  continuous: 'forms_continuous',
+  snapset:    'forms_snap_set',
+  sheetfed:   'forms_sheetfed'
+};
+
 function selectJobType(type, el) {
+  currentJobType = type;
   document.querySelectorAll('.jt-btn').forEach(b => b.classList.remove('jt-selected'));
   el.classList.add('jt-selected');
   setDot('dot-jobtype','confirmed');
@@ -800,8 +810,10 @@ function updateConfidencePanel(spec) {
 }
 
 /* ── REAL AI PARSE ── */
+let lastPromptVersionIds = null; // stored for save_quote.php
+
 async function parseWithAI(customer, description) {
-  const overlay = document.getElementById('parsing-overlay');
+  const overlay     = document.getElementById('parsing-overlay');
   const parseStatus = document.getElementById('parse-status');
   overlay.classList.remove('hidden');
   parseStatus.style.display = 'inline-flex';
@@ -813,67 +825,25 @@ async function parseWithAI(customer, description) {
     'Building confidence model...'
   ];
   let i = 0;
-  const subEl = document.getElementById('parsing-sub');
+  const subEl  = document.getElementById('parsing-sub');
   const ticker = setInterval(() => { subEl.textContent = subMsgs[i++ % subMsgs.length]; }, 1200);
-
-  const systemPrompt = `You are Edna, a print industry expert with 40 years of experience at Still Creek Press, a commercial printer in Burnaby BC specialising in business forms — continuous forms, NCR snap sets, and sheetfed work.
-
-Your job is to parse a job description and extract a structured spec. Return ONLY valid JSON, no markdown, no explanation.
-
-Return this exact structure:
-{
-  "customer": "string or null",
-  "job_name": "string",
-  "job_type": "continuous | snapset | sheetfed",
-  "job_type_confidence": "confirmed | suggested",
-  "width": "string or null",
-  "width_confidence": "confirmed | suggested | missing",
-  "depth": "string or null", 
-  "depth_confidence": "confirmed | suggested | missing",
-  "parts": "string or null",
-  "parts_confidence": "confirmed | suggested | missing",
-  "ncr_type": "string or null",
-  "ncr_type_confidence": "confirmed | suggested",
-  "stock": "string or null",
-  "stock_confidence": "confirmed | suggested | missing",
-  "ink_front": "string or null",
-  "ink_front_confidence": "confirmed | suggested",
-  "ink_back": "string or null",
-  "press": "number as string, e.g. '3'",
-  "press_reason": "string — one sentence why",
-  "finishing": [
-    {"name": "perforation | padding | collating | numbering | drilling | shrink_wrap", "include": true/false, "confidence": "confirmed | suggested", "detail": "string"}
-  ],
-  "qty_breaks": ["5000", "10000", "25000"],
-  "confidence_counts": {"confirmed": 0, "suggested": 0, "missing": 0},
-  "confidence_rows": [
-    {"label": "Customer", "value": "string", "state": "confirmed | suggested | missing"}
-  ],
-  "edna_notes": "string — 1-2 sentences of Edna's plain-language notes"
-}
-
-Confidence rules:
-- confirmed = explicitly stated in the description
-- suggested = inferred from context or print industry knowledge
-- missing = cannot be determined
-
-For snap sets: always add collating if multi-part. Default stock is 15lb NCR carbonless.
-For continuous forms: default stock is 20lb bond.
-Press selection: Press 3 (Didde 22" 5 colour) is best for most snap set and continuous work. Press 11 for full colour. Press 4 for short digital runs.
-Qty breaks: if not specified, suggest typical breaks for the job type (snap set: 5K/10K/25K, continuous: 10K/25K/50K).`;
 
   const userMsg = `Customer: ${customer || 'not specified'}\nJob description: ${description}`;
 
+  // Map picker value to DB job_type key — null on first parse, Edna will detect it
+  const mappedJobType = currentJobType ? jobTypeMap[currentJobType] : null;
+
   try {
+    const payload = {
+      module:   'forms_estimating',
+      messages: [{ role: 'user', content: userMsg }]
+    };
+    if (mappedJobType) payload.job_type = mappedJobType;
+
     const response = await fetch('/api/edna.php', {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userMsg }]
-      })
+      body:    JSON.stringify(payload)
     });
 
     clearInterval(ticker);
@@ -882,12 +852,15 @@ Qty breaks: if not specified, suggest typical breaks for the job type (snap set:
 
     if (!response.ok) throw new Error('API error ' + response.status);
     const data = await response.json();
-    const text = data.content?.[0]?.text || '';
+
+    // Store prompt version IDs for save_quote.php
+    lastPromptVersionIds = data.prompt_version_ids || null;
+
+    const text  = data.content?.[0]?.text || '';
     const clean = text.replace(/```json|```/g, '').trim();
-    const spec = JSON.parse(clean);
+    const spec  = JSON.parse(clean);
     populateForm(spec);
 
-    // Update page title
     if (spec.customer) {
       document.getElementById('page-title').textContent = 'Spec review — ' + spec.customer;
     }
@@ -897,12 +870,12 @@ Qty breaks: if not specified, suggest typical breaks for the job type (snap set:
     overlay.classList.add('hidden');
     parseStatus.style.display = 'none';
     console.error(err);
-    // Fall back to demo data so the UI still shows something useful
     loadDemoSpec();
-    document.getElementById('edna-notes').textContent = 
-      "Couldn't reach the API — showing demo data. Check that /api/edna.php is set up on the server with your Anthropic key.";
+    document.getElementById('edna-notes').textContent =
+      "Couldn't reach the API — showing demo data. Check that /api/edna.php is reachable and secrets.php is configured.";
   }
 }
+
 
 /* ── DEMO SPEC (fallback / direct navigation) ── */
 function loadDemoSpec() {
