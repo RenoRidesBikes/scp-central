@@ -1,24 +1,27 @@
 <?php
 /**
- * edna.php — Anthropic API proxy for SCP Central
- * Place at: /home/ssaiadmin/scp-stack/php/api/edna.php
+ * /public/api/edna.php
  *
- * SECURITY: API key lives at /var/config/secrets.php
- * That file is outside the web root and never touches Git.
+ * Edna AI orchestrator.
+ * - Loads system prompt layers from edna_prompts table
+ * - Composes: base + module + job_type (when known)
+ * - Forwards to Anthropic API
+ * - Returns structured JSON response + prompt_version_ids used
+ *
+ * Does NOT write to DB — that is save_quote.php's job.
  */
 
-// ── SECRETS ─────────────────────────────────────────────────────────────────
+declare(strict_types=1);
+
 require_once __DIR__ . '/../../config/secrets.php';
+require_once __DIR__ . '/../../includes/db.php';
 
-define('ANTHROPIC_API_URL', 'https://api.anthropic.com/v1/messages');
-define('ANTHROPIC_VERSION', '2023-06-01');
-
-// ── ALLOWED ORIGINS ──────────────────────────────────────────────────────────
+// ── CORS ──────────────────────────────────────────────────────────────────────
+// TODO: hardcoded — move allowed origins to DB config table
 $allowed_origins = [
-    'https://scp.stepsolutionsai.online',
+    'https://scp.stepsolutions.ca',
     'http://localhost',
-    'http://127.0.0.1',
-    'null',
+    'http://localhost:8080',
 ];
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -45,6 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// ── REQUEST ───────────────────────────────────────────────────────────────────
 $body    = file_get_contents('php://input');
 $payload = json_decode($body, true);
 
@@ -54,18 +58,128 @@ if (!$payload || !isset($payload['messages'])) {
     exit;
 }
 
-$payload['model']      = 'claude-sonnet-4-20250514';
-$payload['max_tokens'] = min((int)($payload['max_tokens'] ?? 1500), 2000);
+$module   = $payload['module']   ?? null;   // e.g. forms_estimating
+$job_type = $payload['job_type'] ?? null;   // e.g. forms_snap_set — optional on first parse
+
+if (!$module) {
+    http_response_code(400);
+    echo json_encode(['error' => 'module is required']);
+    exit;
+}
+
+// ── LOAD PROMPT LAYERS FROM DB ────────────────────────────────────────────────
+try {
+    $pdo = getDB();
+
+    // Always load: base (global) + module layer
+    $layers_to_load = [
+        ['layer' => 'base',     'module' => 'global'],
+        ['layer' => 'module',   'module' => $module],
+    ];
+
+    // Add job_type layer if we already know it (second pass / clarification round)
+    if ($job_type) {
+        $layers_to_load[] = ['layer' => 'job_type', 'module' => $job_type];
+    }
+
+    // Build IN clause dynamically
+    $placeholders = [];
+    $params       = [];
+    foreach ($layers_to_load as $i => $l) {
+        $placeholders[] = "(:layer_{$i}, :module_{$i})";
+        $params["layer_{$i}"]  = $l['layer'];
+        $params["module_{$i}"] = $l['module'];
+    }
+
+    $in_clause = implode(', ', $placeholders);
+
+    $stmt = $pdo->prepare("
+        SELECT id, layer, module, content
+        FROM edna_prompts
+        WHERE (layer, module) IN ($in_clause)
+          AND is_active = true
+        ORDER BY
+            CASE layer
+                WHEN 'base'     THEN 1
+                WHEN 'module'   THEN 2
+                WHEN 'job_type' THEN 3
+            END
+    ");
+    $stmt->execute($params);
+    $prompt_rows = $stmt->fetchAll();
+
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['error' => 'DB error loading prompts', 'detail' => $e->getMessage()]);
+    exit;
+}
+
+if (empty($prompt_rows)) {
+    http_response_code(500);
+    echo json_encode(['error' => 'No active prompts found for module: ' . $module]);
+    exit;
+}
+
+// ── COMPOSE SYSTEM PROMPT ─────────────────────────────────────────────────────
+$system_parts       = [];
+$prompt_version_ids = [];
+
+foreach ($prompt_rows as $row) {
+    $system_parts[]       = $row['content'];
+    $prompt_version_ids[] = (int) $row['id'];
+}
+
+// Append the JSON output contract — always last
+// TODO: hardcoded JSON structure — move field definitions to DB per job type
+$system_parts[] = '
+Return ONLY valid JSON, no markdown, no explanation.
+Return this exact structure:
+{
+  "customer": "string or null",
+  "job_name": "string",
+  "job_type": "continuous | snap_set | forms_sheetfed",
+  "job_type_confidence": "confirmed | suggested",
+  "width": "string or null",
+  "width_confidence": "confirmed | suggested | missing",
+  "depth": "string or null",
+  "depth_confidence": "confirmed | suggested | missing",
+  "parts": "string or null",
+  "parts_confidence": "confirmed | suggested | missing",
+  "ncr_type": "string or null",
+  "ncr_type_confidence": "confirmed | suggested | missing",
+  "stock": "string or null",
+  "stock_confidence": "confirmed | suggested | missing",
+  "ink_front": "string or null",
+  "ink_front_confidence": "confirmed | suggested | missing",
+  "ink_back": "string or null",
+  "ink_back_confidence": "confirmed | suggested | missing",
+  "perforation": "string or null",
+  "perforation_confidence": "confirmed | suggested | missing",
+  "finishing": "string or null",
+  "finishing_confidence": "confirmed | suggested | missing",
+  "quantities": [1000, 2500, 5000],
+  "edna_note": "string — one sentence, plain language, flag anything unusual or missing"
+}';
+
+$system_prompt = implode("\n\n", $system_parts);
+
+// ── CALL ANTHROPIC ────────────────────────────────────────────────────────────
+$anthropic_payload = [
+    'model'      => ANTHROPIC_MODEL,
+    'max_tokens' => min((int)($payload['max_tokens'] ?? 1500), 2000),
+    'system'     => $system_prompt,
+    'messages'   => $payload['messages'],
+];
 
 $ch = curl_init(ANTHROPIC_API_URL);
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST           => true,
-    CURLOPT_POSTFIELDS     => json_encode($payload),
+    CURLOPT_POSTFIELDS     => json_encode($anthropic_payload),
     CURLOPT_HTTPHEADER     => [
         'Content-Type: application/json',
-        'x-api-key: ' . ANTHROPIC_API_KEY,
-        'anthropic-version: ' . ANTHROPIC_VERSION,
+        'x-api-key: '          . ANTHROPIC_API_KEY,
+        'anthropic-version: '  . ANTHROPIC_VERSION,
     ],
     CURLOPT_TIMEOUT => 30,
 ]);
@@ -81,5 +195,18 @@ if ($curl_error) {
     exit;
 }
 
+// ── RETURN RESPONSE + PROMPT VERSION IDS ─────────────────────────────────────
+// Decode Anthropic response, inject prompt_version_ids, re-encode
+$anthropic_data = json_decode($response, true);
+
+if (json_last_error() !== JSON_ERROR_NONE) {
+    http_response_code(502);
+    echo json_encode(['error' => 'Invalid JSON from Anthropic']);
+    exit;
+}
+
+// Attach prompt_version_ids so frontend can pass them to save_quote.php
+$anthropic_data['prompt_version_ids'] = $prompt_version_ids;
+
 http_response_code($http_code);
-echo $response;
+echo json_encode($anthropic_data);
