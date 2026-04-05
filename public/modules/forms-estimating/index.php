@@ -1,7 +1,6 @@
 <?php
 /**
- * SCP Central — Forms Estimating Module
- * php/public/modules/forms-estimating/index.php
+ * /modules/forms-estimating/index.php
  *
  * Protected page — auth middleware handles session + redirect to login.
  */
@@ -59,9 +58,31 @@ $extraCss = '<style>
 @media(max-width:600px){.quick-actions{grid-template-columns:1fr 1fr}}
 </style>';
 
-require_once __DIR__ . '/../../../includes/head.php';
-require_once __DIR__ . '/../../../includes/nav.php';
+require_once __DIR__ . '/../../../includes/header.php';
 ?>
+
+  <!-- ══ TOPBAR ══ -->
+  <div class="topbar">
+    <button class="mobile-menu-btn" onclick="toggleMobileNav()">
+      <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="topbar-page-title">Estimating</div>
+    <div class="topbar-actions">
+      <div id="topbar-user" class="topbar-user" onclick="toggleUserMenu()">
+        <div class="topbar-avatar"><?= htmlspecialchars($_navInitials) ?></div>
+        <span class="topbar-user-name"><?= htmlspecialchars($firstName) ?></span>
+        <svg class="topbar-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        <div class="user-dropdown">
+          <div class="dropdown-section-label"><?= htmlspecialchars($userName) ?></div>
+          <div class="dropdown-divider"></div>
+          <a class="dropdown-item" href="/logout.php">
+            <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Sign out
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ══ CONTENT ══ -->
   <div class="content">

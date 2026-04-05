@@ -1,12 +1,23 @@
 <?php
 /**
- * SCP Central — Shared HTML head
- * php/includes/head.php
+ * /includes/header.php
  *
  * Variables expected before include:
- *   $pageTitle  string  e.g. 'Dashboard', 'Estimating'
- *   $extraCss   string  optional page-specific <style> block (include the <style> tags)
+ *   $pageTitle  string   e.g. 'Dashboard', 'Estimating'
+ *   $activePage string   nav key: 'dashboard' | 'estimating' | 'customers' | 'jobs' | 'reports' | 'admin'
+ *   $navBadges  array    optional — e.g. ['estimating' => 6]
+ *   $extraCss   string   optional page-specific <style> block (include the <style> tags)
+ *
+ * Expects $_AUTH_USER to be set by auth.php before this include.
  */
+
+// Derive user display values
+$_navName     = $_AUTH_USER['name'] ?? 'User';
+$_navRole     = $_AUTH_USER['role'] ?? 'CSR';
+$_navWords    = array_filter(explode(' ', trim($_navName)));
+$_navInitials = implode('', array_map(fn($w) => strtoupper($w[0]), array_slice($_navWords, 0, 2)));
+$_navBadges   = $navBadges ?? [];
+$_activePage  = $activePage ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -46,6 +57,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
   overflow:hidden;border-right:0.5px solid var(--border);
 }
 .sidenav.collapsed{width:var(--nav-collapsed)}
+.sidenav.collapsed .nav-header{padding:0;justify-content:center}
+.sidenav.collapsed .nav-logo,.sidenav.collapsed .nav-brand{display:none}
 .nav-header{
   display:flex;align-items:center;gap:10px;
   padding:0 14px 0 16px;height:var(--topbar);
@@ -370,3 +383,77 @@ textarea.fi{line-height:1.5}
 </head>
 <body>
 <div class="shell">
+
+<!-- ══ SIDE NAV ══ -->
+<nav class="sidenav" id="sidenav">
+  <div class="nav-header">
+    <a class="nav-logo" href="/index.php">S</a>
+    <a class="nav-brand" href="/index.php">
+      <div class="nav-brand-name">SCP Central</div>
+      <div class="nav-brand-sub">Print Management</div>
+    </a>
+    <button class="nav-collapse-btn" id="collapse-btn" onclick="toggleNav()" title="Collapse nav">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <path id="collapse-icon" d="M10 3L5 8l5 5"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="nav-section-label">Main</div>
+
+  <a class="nav-item<?= $_activePage === 'dashboard'  ? ' active' : '' ?>" href="/index.php">
+    <span class="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+    <span class="nav-item-label">Dashboard</span>
+    <span class="nav-tooltip">Dashboard</span>
+  </a>
+
+  <a class="nav-item<?= $_activePage === 'estimating' ? ' active' : '' ?>" href="/modules/forms-estimating/">
+    <span class="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7H6a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-3"/><path d="M9 15h3l8.5-8.5a1.5 1.5 0 00-3-3L9 12v3z"/></svg></span>
+    <span class="nav-item-label">Estimating</span>
+    <?php if (!empty($_navBadges['estimating'])): ?>
+    <span class="nav-badge"><?= (int)$_navBadges['estimating'] ?></span>
+    <?php endif; ?>
+    <span class="nav-tooltip">Estimating</span>
+  </a>
+
+  <a class="nav-item<?= $_activePage === 'customers'  ? ' active' : '' ?>" href="#">
+    <span class="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></span>
+    <span class="nav-item-label">Customers</span>
+    <span class="nav-tooltip">Customers</span>
+  </a>
+
+  <div class="nav-section-label">Production</div>
+
+  <a class="nav-item<?= $_activePage === 'jobs'       ? ' active' : '' ?>" href="#">
+    <span class="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg></span>
+    <span class="nav-item-label">Jobs</span>
+    <span class="nav-tooltip">Jobs</span>
+  </a>
+
+  <a class="nav-item<?= $_activePage === 'reports'    ? ' active' : '' ?>" href="#">
+    <span class="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+    <span class="nav-item-label">Reports</span>
+    <span class="nav-tooltip">Reports</span>
+  </a>
+
+  <div class="nav-section-label">System</div>
+
+  <a class="nav-item<?= $_activePage === 'admin'      ? ' active' : '' ?>" href="#">
+    <span class="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M2 12h2M20 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/></svg></span>
+    <span class="nav-item-label">Admin</span>
+    <span class="nav-tooltip">Admin</span>
+  </a>
+
+  <div class="nav-footer">
+    <div class="nav-avatar"><?= htmlspecialchars($_navInitials) ?></div>
+    <div class="nav-user-info">
+      <div class="nav-user-name"><?= htmlspecialchars($_navName) ?></div>
+      <div class="nav-user-role"><?= htmlspecialchars($_navRole) ?></div>
+    </div>
+  </div>
+</nav>
+
+<div class="nav-overlay" id="nav-overlay" onclick="closeMobileNav()"></div>
+
+<!-- ══ MAIN ══ -->
+<div class="main" id="main">
