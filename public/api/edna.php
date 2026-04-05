@@ -19,13 +19,17 @@ require_once __DIR__ . '/../../includes/db.php';
 // ── CORS ──────────────────────────────────────────────────────────────────────
 // TODO: hardcoded — move allowed origins to DB config table
 $allowed_origins = [
-    'https://scp.stepsolutions.ca',
+    'https://scp.stepsolutionsai.online',
     'http://localhost',
     'http://localhost:8080',
 ];
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if (in_array($origin, $allowed_origins)) {
+
+// No origin header = same-origin or direct server request — always allow
+if ($origin === '') {
+    // same-origin, no header needed
+} elseif (in_array($origin, $allowed_origins)) {
     header('Access-Control-Allow-Origin: ' . $origin);
 } else {
     http_response_code(403);
