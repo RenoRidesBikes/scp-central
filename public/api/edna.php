@@ -138,6 +138,19 @@ foreach ($prompt_rows as $row) {
 $system_parts[] = '
 Return ONLY valid JSON, no markdown, no explanation.
 
+// TODO: hardcoded — replace with Avanti customer lookup once IPsec tunnel is up
+Known customers — ONLY return a customer value if the job description clearly matches one of these names. If uncertain or not listed, return null for customer:
+- BCAA
+- Telus
+- BC Hydro
+- City of Burnaby
+- TransLink
+- ICBC
+- WorkSafeBC
+- Fortis BC
+- Vancouver Coastal Health
+- Fraser Health
+
 Press reference — Still Creek Press equipment:
 Press 1: MVP Memjet, 11" cutoff — rarely used for forms work
 Press 2: Didde, 17" web — 1-2 colour narrow web
