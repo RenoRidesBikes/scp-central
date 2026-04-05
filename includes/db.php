@@ -1,7 +1,7 @@
 <?php
 // ============================================================
 // SCP Central — Shared DB connection
-// Include: require_once __DIR__ . '/../../includes/db.php';
+// Include: require_once __DIR__ . '/../includes/db.php';
 // ============================================================
 
 require_once '/var/www/secrets.php';

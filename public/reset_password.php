@@ -3,7 +3,7 @@
 // SCP Central — Password reset (token handler)
 // ============================================================
 
-require_once __DIR__ . '/../../includes/db.php';
+require_once __DIR__ . '/../includes/db.php';
 
 define('BCRYPT_COST',       12);
 define('MIN_PASSWORD_LENGTH', 12);

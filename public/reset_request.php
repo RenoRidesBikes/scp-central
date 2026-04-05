@@ -3,7 +3,7 @@
 // SCP Central — Password reset request
 // ============================================================
 
-require_once __DIR__ . '/../../includes/db.php';
+require_once __DIR__ . '/../includes/db.php';
 
 define('RESET_TOKEN_EXPIRY', 60 * 60); // 1 hour
 

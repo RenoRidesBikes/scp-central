@@ -2,7 +2,7 @@
 // ============================================================
 // SCP Central — Auth middleware
 // Include at the top of every protected page:
-//   require_once __DIR__ . '/../../includes/auth.php';
+//   require_once __DIR__ . '/../includes/auth.php';
 // Then call sessionTimeoutScript() inside your <head> tag.
 // ============================================================
 

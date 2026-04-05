@@ -8,7 +8,7 @@
  */
 
 // ── AUTH STUB ────────────────────────────────────────────────────────────────
-// TODO: Replace with real session check e.g. require_once '../../includes/auth.php';
+// TODO: Replace with real session check e.g. require_once '../includes/auth.php';
 $user = [
     'name'     => 'Sarah M.',
     'initials' => 'SM',
