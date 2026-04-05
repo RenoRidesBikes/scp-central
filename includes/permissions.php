@@ -47,16 +47,18 @@ $_permCache = [];
  */
 function hasPermission(int $userId, string $resourceKey, int $bit): bool
 {
-    global $_permCache, $pdo;
+    global $_permCache;
 
     $cacheKey = "{$userId}:{$resourceKey}";
 
     if (!array_key_exists($cacheKey, $_permCache)) {
+        $db = getDB();
+
         // 1. User-level override wins unconditionally
-        $stmt = $pdo->prepare('
+        $stmt = $db->prepare('
             SELECT permission_bits
             FROM   user_permissions
-            WHERE  user_id     = :uid
+            WHERE  user_id      = :uid
               AND  resource_key = :rk
         ');
         $stmt->execute([':uid' => $userId, ':rk' => $resourceKey]);
@@ -66,11 +68,11 @@ function hasPermission(int $userId, string $resourceKey, int $bit): bool
             $_permCache[$cacheKey] = (int) $override;
         } else {
             // 2. Fall back to role default
-            $stmt = $pdo->prepare('
+            $stmt = $db->prepare('
                 SELECT rp.permission_bits
                 FROM   role_permissions rp
                 JOIN   users u ON u.role_id = rp.role_id
-                WHERE  u.id          = :uid
+                WHERE  u.id           = :uid
                   AND  rp.resource_key = :rk
             ');
             $stmt->execute([':uid' => $userId, ':rk' => $resourceKey]);

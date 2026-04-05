@@ -36,7 +36,7 @@ foreach ($allowed as $key) {
 
 $prefs = json_encode(['hidden' => $hidden]);
 
-$stmt = $pdo->prepare('UPDATE users SET dashboard_prefs = :prefs WHERE id = :id');
+$stmt = getDB()->prepare('UPDATE users SET dashboard_prefs = :prefs WHERE id = :id');
 $stmt->execute([':prefs' => $prefs, ':id' => $userId]);
 
 echo json_encode(['ok' => true]);

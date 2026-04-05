@@ -11,10 +11,10 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/permissions.php';
 
-// ── Current user ──────────────────────────────────────────────────────────────
-$userId    = (int) $_SESSION['user']['id'];
-$userName  = $_SESSION['user']['display_name'] ?? $_SESSION['user']['username'] ?? 'User';
-$userRole  = strtolower($_SESSION['user']['role'] ?? 'csr');
+// ── Current user (set by auth.php into $_AUTH_USER) ──────────────────────────
+$userId    = (int) $_AUTH_USER['id'];
+$userName  = $_AUTH_USER['name'] ?? $_AUTH_USER['username'] ?? 'User';
+$userRole  = strtolower($_AUTH_USER['role'] ?? 'csr');
 
 // Build initials (up to 2 chars)
 $parts    = array_filter(explode(' ', trim($userName)));
@@ -36,7 +36,7 @@ $roleLabels = [
 $roleLabel = $roleLabels[$userRole] ?? ucfirst($userRole);
 
 // ── Load dashboard prefs ──────────────────────────────────────────────────────
-$stmt  = $pdo->prepare('SELECT dashboard_prefs FROM users WHERE id = ?');
+$stmt  = getDB()->prepare('SELECT dashboard_prefs FROM users WHERE id = ?');
 $stmt->execute([$userId]);
 $prefsRaw = $stmt->fetchColumn();
 $prefs    = json_decode($prefsRaw ?: '{}', true);
