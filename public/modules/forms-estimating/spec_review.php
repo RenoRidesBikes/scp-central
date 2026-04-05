@@ -507,9 +507,8 @@ function populateForm(spec) {
   if (spec.job_type) {
     document.querySelectorAll('.jt-btn').forEach(b => {
       b.classList.remove('jt-selected');
-      if (b.textContent.toLowerCase().replace(' ', '') === spec.job_type.toLowerCase().replace(' ', '').replace('_', '')) {
-        b.classList.add('jt-selected');
-      }
+      const norm = s => s.toLowerCase().replace(/[\s_-]/g, '');
+      if (norm(b.textContent) === norm(spec.job_type)) b.classList.add('jt-selected');
     });
     setDot('dot-jobtype', spec.job_type_confidence || 'confirmed');
   }
@@ -524,11 +523,11 @@ function populateForm(spec) {
       if (o.text.toLowerCase().includes(spec.ncr_type.toLowerCase())) { sel.value = o.value; break; }
     }
     setDot('dot-ncrtype', spec.ncr_type_confidence || 'suggested');
-  }
+  } else setDot('dot-ncrtype', 'missing');
 
   if (spec.stock)     { setField('f-stock',    spec.stock,     spec.stock_confidence     || 'suggested'); setDot('dot-stock',    spec.stock_confidence     || 'suggested'); } else setDot('dot-stock',    'missing');
-  if (spec.ink_front) { setField('f-inkfront', spec.ink_front, spec.ink_front_confidence || 'confirmed'); setDot('dot-inkfront', spec.ink_front_confidence || 'confirmed'); }
-  if (spec.ink_back !== undefined) { setField('f-inkback', spec.ink_back, 'confirmed'); setDot('dot-inkback', 'confirmed'); }
+  if (spec.ink_front) { setField('f-inkfront', spec.ink_front, spec.ink_front_confidence || 'confirmed'); setDot('dot-inkfront', spec.ink_front_confidence || 'confirmed'); } else setDot('dot-inkfront', 'missing');
+  if (spec.ink_back)  { setField('f-inkback',  spec.ink_back,  spec.ink_back_confidence  || 'confirmed'); setDot('dot-inkback',  spec.ink_back_confidence  || 'confirmed'); }
 
   if (spec.press) {
     document.querySelectorAll('.press-card').forEach(c => {
@@ -545,36 +544,49 @@ function populateForm(spec) {
     r.textContent = spec.press_reason || '';
   }
 
-  const finMap = { perforation:'fin-perf', padding:'fin-pad', collating:'fin-collate', numbering:'fin-number', drilling:'fin-drill', shrink_wrap:'fin-shrink' };
-  if (spec.finishing) {
-    spec.finishing.forEach(f => {
-      const el = document.getElementById(finMap[f.name]);
-      if (!el) return;
-      const cb = el.querySelector('input');
-      cb.checked = f.include;
-      el.classList.toggle('fin-checked', f.include);
-      if (f.confidence === 'suggested') el.classList.add('fin-suggested');
-      if (f.detail) el.querySelector('.fin-detail').textContent = f.detail;
-      if (f.include) {
+  // finishing — Edna returns a plain string; scan it for known operations and tick the checkboxes
+  if (spec.finishing && typeof spec.finishing === 'string') {
+    const lower = spec.finishing.toLowerCase();
+    const finMap = { perforation:'fin-perf', padding:'fin-pad', collating:'fin-collate', numbering:'fin-number', drilling:'fin-drill', 'shrink wrap':'fin-shrink' };
+    Object.entries(finMap).forEach(([keyword, id]) => {
+      if (lower.includes(keyword)) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.querySelector('input').checked = true;
+        el.classList.add('fin-checked', 'fin-suggested');
         const badge = document.createElement('span');
-        badge.className = 'fin-badge ' + (f.confidence === 'suggested' ? 'fin-badge-suggested' : 'fin-badge-confirmed');
-        badge.textContent = f.confidence === 'suggested' ? 'Edna added' : 'Confirmed';
+        badge.className = 'fin-badge fin-badge-suggested';
+        badge.textContent = 'Edna added';
         el.appendChild(badge);
       }
     });
+    // show full finishing string in perf detail as a note
+    const perfDetail = document.getElementById('fin-perf-detail');
+    if (perfDetail) perfDetail.textContent = spec.finishing;
   }
 
-  if (spec.qty_breaks && spec.qty_breaks.length) {
-    spec.qty_breaks.forEach(q => insertBreakTag(parseInt(q).toLocaleString(), true));
-  }
+  // qty breaks — Edna returns as "quantities"; fall back to qty_breaks for future compatibility
+  const breaks = spec.quantities || spec.qty_breaks || [];
+  breaks.forEach(q => insertBreakTag(parseInt(q).toLocaleString(), true));
 
   updateConfidencePanel(spec);
 }
 
 function updateConfidencePanel(spec) {
-  const confirmed = spec.confidence_counts?.confirmed || 0;
-  const suggested = spec.confidence_counts?.suggested || 0;
-  const missing   = spec.confidence_counts?.missing   || 0;
+  // Build counts from individual field confidences — Edna doesn't return confidence_counts
+  const fields = [
+    spec.job_type_confidence, spec.width_confidence, spec.depth_confidence,
+    spec.parts_confidence, spec.ncr_type_confidence, spec.stock_confidence,
+    spec.ink_front_confidence, spec.ink_back_confidence,
+    spec.perforation_confidence, spec.finishing_confidence
+  ];
+  let confirmed = 0, suggested = 0, missing = 0;
+  fields.forEach(f => {
+    if (!f || f === 'missing') missing++;
+    else if (f === 'suggested') suggested++;
+    else confirmed++;
+  });
+  if (spec.customer) confirmed++; else missing++;
 
   document.getElementById('cf-confirmed').textContent = confirmed;
   document.getElementById('cf-suggested').textContent = suggested;
@@ -587,15 +599,28 @@ function updateConfidencePanel(spec) {
     pill.textContent = missing + ' field' + (missing > 1 ? 's' : '') + ' need attention';
   }
 
+  // Build cf-rows from what we have; use confidence_rows if Edna ever returns them
+  const rows = spec.confidence_rows || [
+    { label:'Customer',  value: spec.customer   || '—', state: spec.customer ? 'confirmed' : 'missing' },
+    { label:'Job type',  value: spec.job_type   || '—', state: spec.job_type_confidence   || 'missing' },
+    { label:'Width',     value: spec.width      || '—', state: spec.width_confidence      || 'missing' },
+    { label:'Depth',     value: spec.depth      || '—', state: spec.depth_confidence      || 'missing' },
+    { label:'Parts',     value: spec.parts      || '—', state: spec.parts_confidence      || 'missing' },
+    { label:'Stock',     value: spec.stock      || '—', state: spec.stock_confidence      || 'missing' },
+    { label:'Ink front', value: spec.ink_front  || '—', state: spec.ink_front_confidence  || 'missing' },
+    { label:'Finishing', value: spec.finishing  || '—', state: spec.finishing_confidence  || 'missing' },
+  ];
+
   const rowsEl = document.getElementById('cf-rows');
-  rowsEl.innerHTML = (spec.confidence_rows || []).map(r => `
+  rowsEl.innerHTML = rows.map(r => `
     <div class="cf-row cf-row-${r.state}">
       <span class="cf-dot cf-${r.state === 'confirmed' ? 'green' : r.state === 'suggested' ? 'amber' : 'red'}"></span>
       <span class="cf-field">${r.label}</span>
       <span class="cf-val">${r.value}</span>
     </div>`).join('');
 
-  document.getElementById('edna-notes').textContent = spec.edna_notes || '';
+  // handle both edna_note (current) and edna_notes (future/legacy)
+  document.getElementById('edna-notes').textContent = spec.edna_note || spec.edna_notes || '';
 }
 
 /* ── REAL AI PARSE ── */
