@@ -17,7 +17,7 @@ $firstName = explode(' ', trim($userName))[0];
 $quoteActionCount = 6;
 
 // ── Page config ───────────────────────────────────────────────────────────────
-$pageTitle  = 'Estimating';
+$pageTitle  = 'Forms Estimating';
 $activePage = 'forms-estimating';
 $navBadges  = ['forms-estimating' => $quoteActionCount];
 
@@ -66,7 +66,7 @@ require_once __DIR__ . '/../../../includes/header.php';
     <button class="mobile-menu-btn" onclick="toggleMobileNav()">
       <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
-    <div class="topbar-page-title">Estimating</div>
+    <div class="topbar-page-title">Forms Estimating</div>
     <div class="topbar-actions">
       <div id="topbar-user" class="topbar-user" onclick="toggleUserMenu()">
         <div class="topbar-avatar"><?= htmlspecialchars($_navInitials) ?></div>
@@ -160,7 +160,7 @@ require_once __DIR__ . '/../../../includes/header.php';
               <textarea class="fi" id="nq-desc" rows="3" placeholder="e.g. 10,000 3-part NCR sets, 8.5×11, black ink, top perf, padded in 50s..." style="resize:vertical"></textarea>
             </div>
             <div>
-              <button class="btn btn-primary" onclick="parseAndGo()">Parse with AI and open pricing →</button>
+              <button class="btn btn-primary" onclick="parseAndGo()">Let Edna take it from here →</button>
             </div>
           </div>
         </div>

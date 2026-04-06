@@ -216,7 +216,9 @@ require_once __DIR__ . '/../includes/header.php';
               <label class="field-label">Job description</label>
               <textarea class="fi" id="nq-desc" rows="3" placeholder="e.g. 10,000 3-part NCR sets, 8.5×11, black ink, top perf, padded in 50s..." style="resize:vertical"></textarea>
             </div>
-            <button class="btn btn-primary" onclick="parseAndGo()">Let Edna take it from here →</button>
+            <div>
+              <button class="btn btn-primary" onclick="parseAndGo()">Let Edna take it from here →</button>
+            </div>
           </div>
         </div>
         <?php endif; ?>
