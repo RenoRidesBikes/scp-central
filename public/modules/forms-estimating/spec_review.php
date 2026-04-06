@@ -568,10 +568,14 @@ function populateForm(spec) {
       if (lower.includes(keyword)) {
         const el = document.getElementById(id);
         if (!el) return;
-        // don't double-badge if already checked
         if (el.querySelector('input').checked) return;
         el.querySelector('input').checked = true;
         el.classList.add('fin-checked', 'fin-suggested');
+        // extract detail — look for number after keyword e.g. "padding sets of 50"
+        if (keyword === 'padding') {
+          const match = lower.match(/padding[^0-9]*(\d+)/);
+          if (match) el.querySelector('.fin-detail').textContent = 'Sets of ' + match[1];
+        }
         const badge = document.createElement('span');
         badge.className = 'fin-badge fin-badge-suggested';
         badge.textContent = 'Edna added';
