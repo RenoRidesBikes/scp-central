@@ -1,7 +1,6 @@
 <?php
 /**
- * SCP Central — Main Dashboard
- * php/public/index.php
+ * /index.php
  *
  * Protected page — requires auth middleware.
  * Widgets gated by RBAC (hasPermission) + user hide prefs (dashboard_prefs JSONB).
@@ -93,9 +92,31 @@ $extraCss = '<style>
 .delta.down{background:var(--amber-light);color:var(--amber)}
 </style>';
 
-require_once __DIR__ . '/../includes/head.php';
-require_once __DIR__ . '/../includes/nav.php';
+require_once __DIR__ . '/../includes/header.php';
 ?>
+
+  <!-- ══ TOPBAR ══ -->
+  <div class="topbar">
+    <button class="mobile-menu-btn" onclick="toggleMobileNav()">
+      <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="topbar-page-title">Dashboard</div>
+    <div class="topbar-actions">
+      <div id="topbar-user" class="topbar-user" onclick="toggleUserMenu()">
+        <div class="topbar-avatar"><?= htmlspecialchars($_navInitials) ?></div>
+        <span class="topbar-user-name"><?= htmlspecialchars($firstName) ?></span>
+        <svg class="topbar-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        <div class="user-dropdown">
+          <div class="dropdown-section-label"><?= htmlspecialchars($_AUTH_USER['name'] ?? 'User') ?></div>
+          <div class="dropdown-divider"></div>
+          <a class="dropdown-item" href="/logout.php">
+            <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Sign out
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ══ CONTENT ══ -->
   <div class="content">
@@ -195,7 +216,7 @@ require_once __DIR__ . '/../includes/nav.php';
               <label class="field-label">Job description</label>
               <textarea class="fi" id="nq-desc" rows="3" placeholder="e.g. 10,000 3-part NCR sets, 8.5×11, black ink, top perf, padded in 50s..." style="resize:vertical"></textarea>
             </div>
-            <button class="btn btn-primary" onclick="parseAndGo()">Parse with AI and open pricing →</button>
+            <button class="btn btn-primary" onclick="parseAndGo()">Let Edna take it from here →</button>
           </div>
         </div>
         <?php endif; ?>
