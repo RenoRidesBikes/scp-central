@@ -113,8 +113,9 @@ try {
     $prompt_rows = $stmt->fetchAll();
 
 } catch (Exception $e) {
+    error_log('edna.php: DB error loading prompts: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['error' => 'DB error loading prompts', 'detail' => $e->getMessage()]);
+    echo json_encode(['error' => 'DB error loading prompts']);
     exit;
 }
 
@@ -213,9 +214,27 @@ Return this exact structure:
 
 $system_prompt = implode("\n\n", $system_parts);
 
+// ── RESOLVE ACTIVE MODEL ──────────────────────────────────────────────────────
+// Model is admin-configurable via the Settings page (app_settings table).
+// Fall back to the ANTHROPIC_MODEL constant from secrets.php if the row is
+// missing/empty — degrade to last-known-good rather than break Edna.
+// API key/URL/version stay in secrets.php; only the model name lives in the DB.
+$model = ANTHROPIC_MODEL;
+try {
+    $stmt = $pdo->prepare("SELECT value FROM app_settings WHERE key = 'anthropic_model'");
+    $stmt->execute();
+    $dbModel = $stmt->fetchColumn();
+    if (is_string($dbModel) && $dbModel !== '') {
+        $model = $dbModel;
+    }
+} catch (Exception $e) {
+    // Non-fatal — log and keep the constant fallback.
+    error_log('edna.php: could not read anthropic_model setting, using fallback: ' . $e->getMessage());
+}
+
 // ── CALL ANTHROPIC ────────────────────────────────────────────────────────────
 $anthropic_payload = [
-    'model'      => ANTHROPIC_MODEL,
+    'model'      => $model,
     'max_tokens' => min((int)($payload['max_tokens'] ?? 1500), 2000),
     'system'     => $system_prompt,
     'messages'   => $payload['messages'],
@@ -240,8 +259,9 @@ $curl_error = curl_error($ch);
 curl_close($ch);
 
 if ($curl_error) {
+    error_log('edna.php: cURL error reaching Anthropic API: ' . $curl_error);
     http_response_code(502);
-    echo json_encode(['error' => 'Could not reach Anthropic API', 'detail' => $curl_error]);
+    echo json_encode(['error' => 'Could not reach Anthropic API']);
     exit;
 }
 
@@ -250,8 +270,24 @@ if ($curl_error) {
 $anthropic_data = json_decode($response, true);
 
 if (json_last_error() !== JSON_ERROR_NONE) {
+    error_log('edna.php: invalid JSON from Anthropic (HTTP ' . $http_code . '): ' . substr((string) $response, 0, 500));
     http_response_code(502);
     echo json_encode(['error' => 'Invalid JSON from Anthropic']);
+    exit;
+}
+
+// Anthropic returns a 4xx/5xx with a JSON error body for things like a retired
+// model string (404 not_found_error) or a bad key (401). Without this check the
+// error body would be passed straight through to the client, surfacing as a
+// confusing client-side failure rather than a logged server-side one.
+// Log the real detail; return a generic message so internals don't leak.
+if ($http_code >= 400 || isset($anthropic_data['error'])) {
+    $detail = $anthropic_data['error']['message']
+        ?? $anthropic_data['error']['type']
+        ?? ('HTTP ' . $http_code);
+    error_log('edna.php: Anthropic API error (HTTP ' . $http_code . '): ' . $detail);
+    http_response_code(502);
+    echo json_encode(['error' => 'Edna could not process this request']);
     exit;
 }
 

@@ -157,6 +157,25 @@ textarea.fi{resize:vertical;line-height:1.5}
 .parsing-label{font-size:15px;font-weight:500;color:var(--text)}
 .parsing-sub{font-size:13px;color:var(--text-muted)}
 
+/* ── re-parse accept/keep modal ── */
+.rp-modal{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px}
+.rp-modal.hidden{display:none}
+.rp-modal-box{background:var(--bg-card);border:0.5px solid var(--border);border-radius:var(--radius);width:100%;max-width:460px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2)}
+.rp-modal-head{padding:18px 20px 12px}
+.rp-modal-title{font-size:15px;font-weight:600;color:var(--text)}
+.rp-modal-sub{font-size:12px;color:var(--text-muted);margin-top:3px}
+.rp-modal-list{overflow-y:auto;padding:0 20px;flex:1}
+.rp-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:0.5px solid var(--border);cursor:pointer}
+.rp-row:first-child{border-top:none}
+.rp-row input{flex-shrink:0;width:16px;height:16px;accent-color:var(--blue-mid);cursor:pointer}
+.rp-body{flex:1;min-width:0}
+.rp-field{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px}
+.rp-vals{display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap}
+.rp-cur{color:var(--text-muted);text-decoration:line-through}
+.rp-arrow{color:var(--text-muted)}
+.rp-sug{color:#0C447C;font-weight:500}
+.rp-modal-actions{display:flex;justify-content:flex-end;gap:10px;padding:14px 20px 18px;border-top:0.5px solid var(--border)}
+
 /* ── responsive ── */
 @media(max-width:1000px){
   .content-inner{grid-template-columns:1fr}
@@ -210,6 +229,21 @@ require_once __DIR__ . '/../../../includes/header.php';
     <div class="parsing-spinner"></div>
     <div class="parsing-label">Edna is reading your spec...</div>
     <div class="parsing-sub" id="parsing-sub">Pulling customer history from Avanti</div>
+  </div>
+
+  <!-- RE-PARSE ACCEPT/KEEP MODAL -->
+  <div class="rp-modal hidden" id="rp-modal">
+    <div class="rp-modal-box">
+      <div class="rp-modal-head">
+        <div class="rp-modal-title">Edna suggests some changes</div>
+        <div class="rp-modal-sub">Checked = use Edna's value. Uncheck to keep yours.</div>
+      </div>
+      <div class="rp-modal-list" id="rp-modal-list"></div>
+      <div class="rp-modal-actions">
+        <button class="btn" onclick="closeReparseModal()">Cancel</button>
+        <button class="btn btn-primary" id="rp-modal-ok">OK</button>
+      </div>
+    </div>
   </div>
 
   <div class="content">
@@ -648,16 +682,18 @@ function updateConfidencePanel(spec) {
 /* ── REAL AI PARSE ── */
 let lastPromptVersionIds = null; // stored for save_quote.php
 
-async function parseWithAI(customer, description) {
+/* callEdna — shared fetch + overlay. Returns the parsed spec object, or throws.
+   Used by both the first parse (parseWithAI) and re-parse (reparseWithEdna). */
+async function callEdna(customer, description) {
   const overlay     = document.getElementById('parsing-overlay');
   const parseStatus = document.getElementById('parse-status');
   overlay.classList.remove('hidden');
-  parseStatus.style.display = 'inline-flex';
+  if (parseStatus) parseStatus.style.display = 'inline-flex';
 
   const subMsgs = ['Reading your job description...', 'Checking customer history...', 'Selecting best press...', 'Building confidence model...'];
   let i = 0;
   const subEl  = document.getElementById('parsing-sub');
-  const ticker = setInterval(() => { subEl.textContent = subMsgs[i++ % subMsgs.length]; }, 1200);
+  const ticker = setInterval(() => { if (subEl) subEl.textContent = subMsgs[i++ % subMsgs.length]; }, 1200);
 
   const userMsg       = `Customer: ${customer || 'not specified'}\nJob description: ${description}`;
   const mappedJobType = currentJobType ? jobTypeMap[currentJobType] : null;
@@ -670,24 +706,25 @@ async function parseWithAI(customer, description) {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
     });
 
-    clearInterval(ticker);
-    overlay.classList.add('hidden');
-    parseStatus.style.display = 'none';
-
     if (!response.ok) throw new Error('API error ' + response.status);
     const data = await response.json();
 
     lastPromptVersionIds = data.prompt_version_ids || null;
-
-    const spec = JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g, '').trim() || '{}');
-    populateForm(spec);
-
-    if (spec.customer) document.getElementById('page-title').textContent = 'Spec review — ' + spec.customer;
-
-  } catch (err) {
+    return JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g, '').trim() || '{}');
+  } finally {
     clearInterval(ticker);
     overlay.classList.add('hidden');
-    parseStatus.style.display = 'none';
+    if (parseStatus) parseStatus.style.display = 'none';
+  }
+}
+
+/* First parse — from the previous screen's free text. Overwrites the form. */
+async function parseWithAI(customer, description) {
+  try {
+    const spec = await callEdna(customer, description);
+    populateForm(spec);
+    if (spec.customer) document.getElementById('page-title').textContent = 'Spec review — ' + spec.customer;
+  } catch (err) {
     console.error(err);
     loadDemoSpec();
     document.getElementById('edna-notes').textContent =
@@ -702,9 +739,172 @@ function loadDemoSpec() {
     'Describe the job on the previous screen and I\'ll parse it — or fill in the fields manually.';
 }
 
-function reparseWithEdna() {
-  const desc = prompt('Paste updated job description:');
-  if (desc) parseWithAI(document.getElementById('f-customer').value, desc);
+/* ── RE-PARSE: send current form state to Edna, diff, let user accept changes ── */
+
+// Registry of the simple text/select spec fields Edna returns and where they
+// live in the DOM. Drives serialize, diff, and apply so they stay in sync.
+// (job_type, press, finishing, quantities are handled separately below.)
+const REPARSE_FIELDS = [
+  { spec: 'customer',  el: 'f-customer', label: 'Customer'  },
+  { spec: 'job_name',  el: 'f-jobname',  label: 'Job name'  },
+  { spec: 'width',     el: 'f-width',    label: 'Width'     },
+  { spec: 'depth',     el: 'f-depth',    label: 'Depth'     },
+  { spec: 'parts',     el: 'f-parts',    label: 'Parts'     },
+  { spec: 'ncr_type',  el: 'f-ncrtype',  label: 'NCR type'  },
+  { spec: 'stock',     el: 'f-stock',    label: 'Stock'     },
+  { spec: 'ink_front', el: 'f-inkfront', label: 'Ink front' },
+  { spec: 'ink_back',  el: 'f-inkback',  label: 'Ink back'  },
+];
+
+// Read current form state back into a natural-language description for Edna.
+function serializeForm() {
+  const val  = id => (document.getElementById(id)?.value || '').trim();
+  const jt   = document.querySelector('.jt-btn.jt-selected');
+  const press = document.querySelector('.press-card.press-selected .press-num');
+
+  const fins = [];
+  document.querySelectorAll('.fin-item.fin-checked').forEach(item => {
+    const name   = item.querySelector('.fin-name')?.textContent.trim();
+    const detail = item.querySelector('.fin-detail')?.textContent.trim();
+    if (name) fins.push(detail && !/^(top, bottom|sets of 25|required|sequential|3-hole|individual)/i.test(detail) ? `${name} (${detail})` : name);
+  });
+
+  const breaks = [...document.querySelectorAll('.break-tag')]
+    .map(t => t.firstChild.textContent.trim().replace(/,/g, ''))
+    .filter(Boolean);
+
+  const parts = [];
+  if (val('f-customer')) parts.push(`Customer: ${val('f-customer')}.`);
+  if (jt)                parts.push(`Job type: ${jt.textContent.trim()}.`);
+  if (val('f-jobname'))  parts.push(`Job: ${val('f-jobname')}.`);
+  if (val('f-width') || val('f-depth')) parts.push(`Size: ${val('f-width') || '?'} x ${val('f-depth') || '?'} in.`);
+  if (val('f-parts'))    parts.push(`Parts: ${val('f-parts')}.`);
+  if (val('f-ncrtype'))  parts.push(`NCR type: ${val('f-ncrtype')}.`);
+  if (val('f-stock'))    parts.push(`Stock: ${val('f-stock')}.`);
+  if (val('f-inkfront')) parts.push(`Ink front: ${val('f-inkfront')}.`);
+  if (val('f-inkback'))  parts.push(`Ink back: ${val('f-inkback')}.`);
+  if (press)             parts.push(`Press: ${press.textContent.trim()}.`);
+  if (fins.length)       parts.push(`Finishing: ${fins.join(', ')}.`);
+  if (breaks.length)     parts.push(`Quantities: ${breaks.join(', ')}.`);
+
+  return { customer: val('f-customer'), description: parts.join(' ') };
+}
+
+// Compare Edna's spec to current form values. Returns the list of fields where
+// she DIFFERS from a non-empty user value (these need the user's decision) and
+// silently applies fields the user left blank.
+function diffSpec(spec) {
+  const changes = [];
+  REPARSE_FIELDS.forEach(f => {
+    const cur = (document.getElementById(f.el)?.value || '').trim();
+    let next  = spec[f.spec];
+    next = (next == null ? '' : String(next)).trim();
+    if (!next) return;                       // Edna has nothing for this field
+    if (next === cur) return;                // agreement, nothing to do
+    if (!cur) {
+      // User left it blank — fill silently, no decision needed.
+      const conf = spec[f.spec + '_confidence'] || 'suggested';
+      if (f.el === 'f-ncrtype') {
+        const sel = document.getElementById('f-ncrtype');
+        for (let o of sel.options) {
+          if (o.text.toLowerCase().includes(next.toLowerCase())) { sel.value = o.value; break; }
+        }
+      } else {
+        setField(f.el, next, conf);
+      }
+      setDot(DOT_FOR[f.el], conf);
+      return;
+    }
+    changes.push({ ...f, current: cur, suggested: next, confidence: spec[f.spec + '_confidence'] || 'suggested' });
+  });
+  return changes;
+}
+
+// Map f-<x> id → dot-<x> id (dots don't always match the input suffix).
+const DOT_FOR = {
+  'f-customer':'dot-customer', 'f-jobname':'dot-jobname', 'f-width':'dot-width',
+  'f-depth':'dot-depth', 'f-parts':'dot-parts', 'f-ncrtype':'dot-ncrtype',
+  'f-stock':'dot-stock', 'f-inkfront':'dot-inkfront', 'f-inkback':'dot-inkback'
+};
+
+function applyAcceptedChanges(changes) {
+  changes.forEach(c => {
+    if (!c.accepted) return;
+    if (c.el === 'f-ncrtype') {
+      const sel = document.getElementById('f-ncrtype');
+      for (let o of sel.options) {
+        if (o.text.toLowerCase().includes(c.suggested.toLowerCase())) { sel.value = o.value; break; }
+      }
+    } else {
+      setField(c.el, c.suggested, c.confidence);
+    }
+    setDot(DOT_FOR[c.el], c.confidence);
+  });
+}
+
+async function reparseWithEdna() {
+  const { customer, description } = serializeForm();
+  if (!description) {
+    document.getElementById('edna-notes').textContent =
+      "There's nothing to re-parse yet — fill in some specs first and I'll take another look.";
+    return;
+  }
+
+  let spec;
+  try {
+    spec = await callEdna(customer, description);
+  } catch (err) {
+    console.error(err);
+    document.getElementById('edna-notes').textContent =
+      "Couldn't reach the API to re-parse. Check that /api/edna.php is reachable.";
+    return;
+  }
+
+  // Edna's free-form feedback always updates, even when she agrees.
+  document.getElementById('edna-notes').textContent =
+    spec.edna_note || spec.edna_notes || "I've reviewed your specs.";
+
+  const changes = diffSpec(spec);
+  if (changes.length === 0) {
+    document.getElementById('edna-panel-sub').textContent = 'Reviewed — looks good';
+    return;
+  }
+  openReparseModal(changes);
+}
+
+/* ── ACCEPT / KEEP MODAL ── */
+function openReparseModal(changes) {
+  const list = changes.map((c, idx) => `
+    <label class="rp-row">
+      <input type="checkbox" data-idx="${idx}" checked>
+      <div class="rp-body">
+        <div class="rp-field">${c.label}</div>
+        <div class="rp-vals">
+          <span class="rp-cur">${escapeHtml(c.current)}</span>
+          <span class="rp-arrow">→</span>
+          <span class="rp-sug">${escapeHtml(c.suggested)}</span>
+        </div>
+      </div>
+    </label>`).join('');
+
+  document.getElementById('rp-modal-list').innerHTML = list;
+  document.getElementById('rp-modal').classList.remove('hidden');
+
+  // Wire OK to apply checked rows
+  document.getElementById('rp-modal-ok').onclick = () => {
+    document.querySelectorAll('#rp-modal-list input[type=checkbox]').forEach(cb => {
+      changes[+cb.dataset.idx].accepted = cb.checked;
+    });
+    applyAcceptedChanges(changes);
+    closeReparseModal();
+    document.getElementById('edna-panel-sub').textContent = 'Updated with your choices';
+  };
+}
+function closeReparseModal() {
+  document.getElementById('rp-modal').classList.add('hidden');
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 
 function runEstimate() {

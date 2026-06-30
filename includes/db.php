@@ -9,7 +9,6 @@ require_once '/var/www/secrets.php';
 define('DB_HOST', 'postgres');
 define('DB_PORT', '5432');
 define('DB_NAME', 'scp_central');
-define('DB_USER', 'scpadmin');
 
 /**
  * Returns a singleton PDO connection.
