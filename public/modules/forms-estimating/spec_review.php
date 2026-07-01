@@ -907,8 +907,52 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 
+// Read the selected press number and the quantity breaks from the form,
+// call the sandbox compute endpoint, stash the result, and open the
+// pricing screen. Nothing is saved to the DB here (sandbox).
 function runEstimate() {
-  alert('Pricing screen coming next! 🚀');
+  const pressEl = document.querySelector('.press-card.press-selected .press-num');
+  if (!pressEl) {
+    alert('Pick a press first.');
+    return;
+  }
+  const pressNumber = pressEl.textContent.trim();
+
+  const quantities = [...document.querySelectorAll('.break-tag')]
+    .map(t => parseInt(t.firstChild.textContent.trim().replace(/,/g, ''), 10))
+    .filter(q => q > 0);
+  if (quantities.length === 0) {
+    alert('Add at least one quantity break first.');
+    return;
+  }
+
+  const btns = document.querySelectorAll('[onclick="runEstimate()"]');
+  btns.forEach(b => { b.disabled = true; });
+
+  const customer = (document.getElementById('f-customer')?.value || '').trim();
+  const jobname  = (document.getElementById('f-jobname')?.value || '').trim();
+
+  fetch('/api/run_estimate.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ press_number: pressNumber, quantities: quantities })
+  })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+      if (!ok) {
+        alert(data.error || 'Could not compute estimate');
+        btns.forEach(b => { b.disabled = false; });
+        return;
+      }
+      data.customer = customer;
+      data.jobname  = jobname;
+      sessionStorage.setItem('scp_estimate', JSON.stringify(data));
+      window.location.href = '/modules/forms-estimating/pricing.php';
+    })
+    .catch(() => {
+      alert('Network error running estimate');
+      btns.forEach(b => { b.disabled = false; });
+    });
 }
 
 /* ── ON LOAD ── */
